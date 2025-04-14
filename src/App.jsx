@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Header from './components/Header';
 import StatisticsPanel from './components/StatisticsPanel';
 import DealsTable from './components/DealsTable';
 import SearchBar from './components/SearchBar';
 import FilterPanel from './components/FilterPanel';
 import LoadingSpinner from './components/LoadingSpinner';
+import DealDetail from './components/DealDetail'; // New component for detail view
+import ChartSection from './components/ChartSection'; // New component for chart section
 
 import './App.css'
 
@@ -20,8 +23,36 @@ function App() {
     totalDeals: 0,
     averageSavings: 0,
     bestDeal: null,
-    storeDistribution: {}
+    storeDistribution: {},
+    priceRanges: {}, // Added for chart data
+    savingsDistribution: {} // Added for chart data
   });
+  const [storeNames, setStoreNames] = useState({}); // Added to store names of stores
+
+  //Added to Fetch store information
+  useEffect(() => {
+    const fetchStores = async () => {
+      try {
+        const response = await fetch('https://www.cheapshark.com/api/1.0/stores');
+        if (!response.ok) {
+          throw new Error('Failed to fetch store data');
+        }
+        const storeData = await response.json();
+        
+        // Create a mapping of storeID to store name
+        const storeMap = {};
+        storeData.forEach(store => {
+          storeMap[store.storeID] = store.storeName;
+        });
+        
+        setStoreNames(storeMap);
+      } catch (error) {
+        console.error('Error fetching store data:', error);
+      }
+    };
+    
+    fetchStores();
+  }, []);
   
   // Fetch deals from the CheapShark API
   useEffect(() => {
@@ -42,7 +73,8 @@ function App() {
               savings: parseFloat(deal.savings).toFixed(2),
               salePrice: parseFloat(deal.salePrice).toFixed(2),
               normalPrice: parseFloat(deal.normalPrice).toFixed(2),
-              percentSavings: ((parseFloat(deal.savings) / 100)).toFixed(2)
+              // percentSavings: ((parseFloat(deal.savings) / 100)).toFixed(2)
+              percentSavings: ((parseFloat(deal.savings) / parseFloat(deal.normalPrice)) * 100).toFixed(2)
             };
           });
           
@@ -57,7 +89,7 @@ function App() {
       };
       
       fetchDeals();
-    }, 2000); // Simulate loading delay
+    }, 1000); // Simulate loading delay
   }, []);
   
   // Calculate statistics from the data
@@ -74,18 +106,60 @@ function App() {
       parseFloat(prev.savings) > parseFloat(current.savings) ? prev : current
     );
     
-    // Store distribution
+    // Store distribution: count of how many deals are available for each store
     const storeDistribution = dealData.reduce((acc, deal) => {
       acc[deal.storeID] = (acc[deal.storeID] || 0) + 1;
       return acc;
     }, {});
+
+     // Added: Price range distribution for chart
+     const priceRanges = {
+      'Under $5': 0,
+      '$5 - $10': 0,
+      '$10 - $20': 0,
+      '$20 - $30': 0,
+      '$30 - $50': 0,
+      'Over $50': 0
+    };
+    
+    dealData.forEach(deal => {
+      const price = parseFloat(deal.salePrice);
+      if (price < 5) priceRanges['Under $5']++;
+      else if (price < 10) priceRanges['$5 - $10']++;
+      else if (price < 20) priceRanges['$10 - $20']++;
+      else if (price < 30) priceRanges['$20 - $30']++;
+      else if (price < 50) priceRanges['$30 - $50']++;
+      else priceRanges['Over $50']++;
+    });
+    
+    // Added: Savings distribution for chart
+    const savingsDistribution = {
+      '0-20%': 0,
+      '21-40%': 0,
+      '41-60%': 0,
+      '61-80%': 0,
+      '81-100%': 0
+    };
+    
+    dealData.forEach(deal => {
+      const savingsPercent = parseFloat(deal.savings);
+      if (savingsPercent <= 20) savingsDistribution['0-20%']++;
+      else if (savingsPercent <= 40) savingsDistribution['21-40%']++;
+      else if (savingsPercent <= 60) savingsDistribution['41-60%']++;
+      else if (savingsPercent <= 80) savingsDistribution['61-80%']++;
+      else savingsDistribution['81-100%']++;
+    });
     
     setStatistics({
       totalDeals,
       averageSavings,
       bestDeal,
-      storeDistribution
+      storeDistribution,
+      priceRanges,
+      savingsDistribution
     });
+
+    // console.log(storeDistribution);
   };
   
   // Filter deals based on search term and filters
@@ -144,39 +218,106 @@ function App() {
   const handleStoreFilterChange = (store) => {
     setStoreFilter(store);
   };
+
+  // Define Dashboard component to keep App.js clean
+  const Dashboard = () => (
+    <div className="dashboard-container">
+      <div className="search-filter-container">
+        <SearchBar onSearchChange={handleSearchChange} />
+        <FilterPanel 
+          onPriceFilterChange={handlePriceFilterChange} 
+          onStoreFilterChange={handleStoreFilterChange}
+          deals={deals}
+          storeNames={storeNames}
+        />
+      </div>
+      
+      {loading ? (
+        <LoadingSpinner />
+      ) : (
+        <>
+          <StatisticsPanel statistics={statistics} storeNames={storeNames} />
+          
+          {/* NEW: Chart Section */}
+          <ChartSection 
+            priceRanges={statistics.priceRanges} 
+            savingsDistribution={statistics.savingsDistribution}
+            storeDistribution={statistics.storeDistribution}
+            storeNames={storeNames}
+          />
+          
+          <DealsTable 
+            deals={filteredDeals} 
+            storeNames={storeNames}
+          />
+          
+          {filteredDeals.length === 0 && (
+            <div className="no-results">No deals found matching your criteria</div>
+          )}
+        </>
+      )}
+    </div>
+  );
   
   if (error) {
     return <div className="error-message">Error: {error}</div>;
   }
   
+  // Using React Router to create routes
   return (
-    <div className="app">
-      <Header />
-      
-      <div className="dashboard-container">
-        <div className="search-filter-container">
-          <SearchBar onSearchChange={handleSearchChange} />
-          <FilterPanel 
-            onPriceFilterChange={handlePriceFilterChange} 
-            onStoreFilterChange={handleStoreFilterChange}
-            deals={deals}
-          />
-        </div>
-        
-        {loading ? (
-          <LoadingSpinner />
-        ) : (
-          <>
-            <StatisticsPanel statistics={statistics} />
-            <DealsTable deals={filteredDeals} />
-            {filteredDeals.length === 0 && (
-              <div className="no-results">No deals found matching your criteria</div>
-            )}
-          </>
-        )}
+    <Router>
+      <div className="app">
+        <Routes>
+          <Route path="/" element={
+            <>
+              <Header />
+              <Dashboard />
+            </>
+          } />
+          <Route path="/deal/:dealId" element={
+            <>
+              <Header showHomeLink={true} />
+              {loading ? <LoadingSpinner /> : <DealDetail deals={deals} storeNames={storeNames} />}
+            </>
+          } />
+        </Routes>
       </div>
-    </div>
+    </Router>
   );
 }
+  
+//   if (error) {
+//     return <div className="error-message">Error: {error}</div>;
+//   }
+  
+//   return (
+//     <div className="app">
+//       <Header />
+      
+//       <div className="dashboard-container">
+//         <div className="search-filter-container">
+//           <SearchBar onSearchChange={handleSearchChange} />
+//           <FilterPanel 
+//             onPriceFilterChange={handlePriceFilterChange} 
+//             onStoreFilterChange={handleStoreFilterChange}
+//             deals={deals}
+//           />
+//         </div>
+        
+//         {loading ? (
+//           <LoadingSpinner />
+//         ) : (
+//           <>
+//             <StatisticsPanel statistics={statistics} />
+//             <DealsTable deals={filteredDeals} />
+//             {filteredDeals.length === 0 && (
+//               <div className="no-results">No deals found matching your criteria</div>
+//             )}
+//           </>
+//         )}
+//       </div>
+//     </div>
+//   );
+// }
 
 export default App

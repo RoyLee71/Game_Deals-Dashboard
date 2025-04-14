@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-function FilterPanel({ onPriceFilterChange, onStoreFilterChange, deals }) {
+function FilterPanel({ onPriceFilterChange, onStoreFilterChange, deals, storeNames }) {
   const [uniqueStores, setUniqueStores] = useState([]);
 
   useEffect(() => {
@@ -29,7 +29,7 @@ function FilterPanel({ onPriceFilterChange, onStoreFilterChange, deals }) {
           <option value="all">All Stores</option>
           {uniqueStores.map(storeID => (
             <option key={storeID} value={storeID}>
-              Store {storeID}
+              {storeNames[storeID] || `Store ${storeID}`}
             </option>
           ))}
         </select>
