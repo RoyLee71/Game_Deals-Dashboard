@@ -8,7 +8,7 @@ function Header({ showHomeLink = false }) {
       <p>Find the best gaming deals right here!</p>
       {showHomeLink && (
         <Link to="/" className="home-link">
-          <i className="home-icon">🏠</i> Back to Dashboard
+          <div className="home-icon">🏠</div>Back to Dashboard
         </Link>
       )}
     </header>

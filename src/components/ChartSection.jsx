@@ -75,7 +75,25 @@ function ChartSection({ priceRanges, savingsDistribution, storeDistribution, sto
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
-              <Pie
+            <Pie
+                data={savingsData}
+                cx="50%"
+                cy="50%"
+                innerRadius={20}
+                outerRadius={55}
+                fill="#8884d8"
+                dataKey="count"
+                nameKey="name"
+                labelLine={true}
+                label={({ name, percent }) => {
+                    const percentage = (percent * 100).toFixed(0);
+                    return percentage > 0 ? `${name}: ${percentage}%` : '';
+                    
+                  }}
+                  
+            >
+
+              {/* <Pie
                 data={savingsData}
                 cx="50%"
                 cy="50%"
@@ -85,7 +103,7 @@ function ChartSection({ priceRanges, savingsDistribution, storeDistribution, sto
                 dataKey="count"
                 nameKey="name"
                 label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-              >
+              > */}
                 {savingsData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}

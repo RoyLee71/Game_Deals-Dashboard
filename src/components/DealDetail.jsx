@@ -1,17 +1,35 @@
 import React from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 function DealDetail({ deals, storeNames }) {
   const { dealId } = useParams();
+
+  if (!deals || deals.length === 0) {
+    return <div>Loading deal details...</div>;
+  }
+  console.log("Deals:", deals);
   
   // Find the selected deal using the URL parameter
-  const selectedDeal = deals.find(deal => deal.dealID === dealId);
+//   const decodedDeals = deals.map(deal => ({
+//     ...deal,
+//     decodedDealID: decodeURIComponent(deal.dealID),
+//   }));
+//   console.log("Decoded Deals:", decodedDeals);
+  const selectedDeal = deals.find(deal => decodeURIComponent(deal.dealID) === dealId); //ALL THESE HOURS JUST TO FIGURE OUT TO DECODE URI COMPONENT!!!! ARGHHH
+//   const selectedDeal = deals.find(deal => deal.dealID.toString() == dealId);
+//   const selectedDeal = deals.filter(deal => deal.dealID.toString() === dealId)[0];
+  console.log("Selected Deal:", selectedDeal);
+//   console.log("All Deal IDs:", deals.map(d => d.dealID));
+  console.log("Looking for Deal ID:", dealId);
+
   
-  // If deal not found, redirect to dashboard
+  
+//   If deal not found, redirect to dashboard
   if (!selectedDeal) {
-    return <Navigate to="/" />;
-  }
+    // return <Navigate to="/" />;
+    return <div>Deal not found</div>;
+  } 
   
   // Prepare price history data for chart
   const priceData = [
@@ -41,7 +59,7 @@ function DealDetail({ deals, storeNames }) {
           <div className="price-tag">
             <span className="current-price">${selectedDeal.salePrice}</span>
             <span className="original-price">${selectedDeal.normalPrice}</span>
-            <span className="savings-badge">{selectedDeal.percentSavings}% OFF</span>
+            <span className="savings-badge">{selectedDeal.savings}% OFF</span>
           </div>
         </div>
       </div>

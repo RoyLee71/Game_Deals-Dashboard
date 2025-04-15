@@ -1,6 +1,6 @@
 import React from 'react';
 
-function SearchBar({ onSearchChange }) {
+function SearchBar({ onSearchChange}) {
   const handleInputChange = (e) => {
     onSearchChange(e.target.value);
   };
@@ -18,3 +18,4 @@ function SearchBar({ onSearchChange }) {
 }
 
 export default SearchBar;
+

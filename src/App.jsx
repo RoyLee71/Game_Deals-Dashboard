@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import './App.css';
 import Header from './components/Header';
 import StatisticsPanel from './components/StatisticsPanel';
 import DealsTable from './components/DealsTable';
@@ -7,16 +8,15 @@ import SearchBar from './components/SearchBar';
 import FilterPanel from './components/FilterPanel';
 import LoadingSpinner from './components/LoadingSpinner';
 import DealDetail from './components/DealDetail'; // New component for detail view
-import ChartSection from './components/ChartSection'; // New component for chart section
+import ChartSection from './components/ChartSection'; // New component for charts
 
-import './App.css'
-
+// Main App component
 function App() {
   const [deals, setDeals] = useState([]);
   const [filteredDeals, setFilteredDeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [priceFilter, setPriceFilter] = useState('all');
   const [storeFilter, setStoreFilter] = useState('all');
   const [statistics, setStatistics] = useState({
@@ -28,8 +28,8 @@ function App() {
     savingsDistribution: {} // Added for chart data
   });
   const [storeNames, setStoreNames] = useState({}); // Added to store names of stores
-
-  //Added to Fetch store information
+  
+  // Fetch store information
   useEffect(() => {
     const fetchStores = async () => {
       try {
@@ -56,43 +56,41 @@ function App() {
   
   // Fetch deals from the CheapShark API
   useEffect(() => {
-    setTimeout(() => {
-      const fetchDeals = async () => {
-        try {
-          setLoading(true);
-          const response = await fetch('https://www.cheapshark.com/api/1.0/deals?pageSize=60');
-          if (!response.ok) {
-            throw new Error('Failed to fetch data');
-          }
-          const data = await response.json();
-          
-          // Enrich data with additional information
-          const enrichedData = data.map((deal) => {
-            return {
-              ...deal,
-              savings: parseFloat(deal.savings).toFixed(2),
-              salePrice: parseFloat(deal.salePrice).toFixed(2),
-              normalPrice: parseFloat(deal.normalPrice).toFixed(2),
-              // percentSavings: ((parseFloat(deal.savings) / 100)).toFixed(2)
-              percentSavings: ((parseFloat(deal.savings) / parseFloat(deal.normalPrice)) * 100).toFixed(2)
-            };
-          });
-          
-          setDeals(enrichedData);
-          setFilteredDeals(enrichedData);
-          calculateStatistics(enrichedData);
-          setLoading(false);
-        } catch (error) {
-          setError(error.message);
-          setLoading(false);
+    const fetchDeals = async () => {
+      try {
+        setLoading(true);
+        // Increased page size to get more data for better visualization
+        const response = await fetch('https://www.cheapshark.com/api/1.0/deals?pageSize=60');
+        if (!response.ok) {
+          throw new Error('Failed to fetch data');
         }
-      };
-      
-      fetchDeals();
-    }, 1000); // Simulate loading delay
+        const data = await response.json();
+        
+        // Enrich data with additional information
+        const enrichedData = data.map((deal) => {
+          return {
+            ...deal,
+            savings: parseFloat(deal.savings).toFixed(2),
+            salePrice: parseFloat(deal.salePrice).toFixed(2),
+            normalPrice: parseFloat(deal.normalPrice).toFixed(2),
+            percentSavings: ((parseFloat(deal.savings) / 100)).toFixed(2)
+          };
+        });
+        
+        setDeals(enrichedData);
+        setFilteredDeals(enrichedData);
+        calculateStatistics(enrichedData);
+        setLoading(false);
+      } catch (error) {
+        setError(error.message);
+        setLoading(false);
+      }
+    };
+    
+    fetchDeals();
   }, []);
   
-  // Calculate statistics from the data
+  // Calculate statistics from the data - Enhanced for chart data
   const calculateStatistics = (dealData) => {
     // Total deals
     const totalDeals = dealData.length;
@@ -106,14 +104,14 @@ function App() {
       parseFloat(prev.savings) > parseFloat(current.savings) ? prev : current
     );
     
-    // Store distribution: count of how many deals are available for each store
+    // Store distribution
     const storeDistribution = dealData.reduce((acc, deal) => {
       acc[deal.storeID] = (acc[deal.storeID] || 0) + 1;
       return acc;
     }, {});
-
-     // Added: Price range distribution for chart
-     const priceRanges = {
+    
+    // NEW: Price range distribution for chart
+    const priceRanges = {
       'Under $5': 0,
       '$5 - $10': 0,
       '$10 - $20': 0,
@@ -132,7 +130,8 @@ function App() {
       else priceRanges['Over $50']++;
     });
     
-    // Added: Savings distribution for chart
+    // NEW: Savings distribution for chart
+
     const savingsDistribution = {
       '0-20%': 0,
       '21-40%': 0,
@@ -158,8 +157,6 @@ function App() {
       priceRanges,
       savingsDistribution
     });
-
-    // console.log(storeDistribution);
   };
   
   // Filter deals based on search term and filters
@@ -218,52 +215,54 @@ function App() {
   const handleStoreFilterChange = (store) => {
     setStoreFilter(store);
   };
-
-  // Define Dashboard component to keep App.js clean
-  const Dashboard = () => (
-    <div className="dashboard-container">
-      <div className="search-filter-container">
-        <SearchBar onSearchChange={handleSearchChange} />
-        <FilterPanel 
-          onPriceFilterChange={handlePriceFilterChange} 
-          onStoreFilterChange={handleStoreFilterChange}
-          deals={deals}
-          storeNames={storeNames}
-        />
-      </div>
-      
-      {loading ? (
-        <LoadingSpinner />
-      ) : (
-        <>
-          <StatisticsPanel statistics={statistics} storeNames={storeNames} />
-          
-          {/* NEW: Chart Section */}
-          <ChartSection 
-            priceRanges={statistics.priceRanges} 
-            savingsDistribution={statistics.savingsDistribution}
-            storeDistribution={statistics.storeDistribution}
-            storeNames={storeNames}
-          />
-          
-          <DealsTable 
-            deals={filteredDeals} 
-            storeNames={storeNames}
-          />
-          
-          {filteredDeals.length === 0 && (
-            <div className="no-results">No deals found matching your criteria</div>
-          )}
-        </>
-      )}
-    </div>
-  );
   
+  // Define Dashboard component to keep App.js clean
+  // const Dashboard = () => (
+  //   <div className="dashboard-container">
+  //     <div className="search-filter-container">
+  //       <SearchBar onSearchChange={handleSearchChange} />
+  //       <FilterPanel 
+  //         onPriceFilterChange={handlePriceFilterChange} 
+  //         onStoreFilterChange={handleStoreFilterChange}
+  //         deals={deals}
+  //         storeNames={storeNames}
+  //         priceFilter={priceFilter}
+  //         storeFilter={storeFilter} 
+  //       />
+  //     </div>
+      
+  //     {loading ? (
+  //       <LoadingSpinner />
+  //     ) : (
+  //       <>
+  //         <StatisticsPanel statistics={statistics} storeNames={storeNames} />
+          
+  //         {/* NEW: Chart Section */}
+  //         <ChartSection 
+  //           priceRanges={statistics.priceRanges} 
+  //           savingsDistribution={statistics.savingsDistribution}
+  //           storeDistribution={statistics.storeDistribution}
+  //           storeNames={storeNames}
+  //         />
+          
+  //         <DealsTable 
+  //           deals={filteredDeals} 
+  //           storeNames={storeNames}
+  //         />
+          
+  //         {filteredDeals.length === 0 && (
+  //           <div className="no-results">No deals found matching your criteria</div>
+  //         )}
+  //       </>
+  //     )}
+  //   </div>
+  // );
+  
+
   if (error) {
     return <div className="error-message">Error: {error}</div>;
   }
-  
-  // Using React Router to create routes
+
   return (
     <Router>
       <div className="app">
@@ -271,7 +270,44 @@ function App() {
           <Route path="/" element={
             <>
               <Header />
-              <Dashboard />
+              <div className="dashboard-container">
+                <div className="search-filter-container">
+                  <SearchBar onSearchChange={handleSearchChange} />
+                  <FilterPanel 
+                    onPriceFilterChange={handlePriceFilterChange} 
+                    onStoreFilterChange={handleStoreFilterChange}
+                    deals={deals}
+                    storeNames={storeNames}
+                    // priceFilter={priceFilter}
+                    // storeFilter={storeFilter} 
+                  />
+                </div>
+              
+                {loading ? (
+                  <LoadingSpinner />
+                ) : (
+                  <>
+                    <StatisticsPanel statistics={statistics} storeNames={storeNames} />
+                    
+                  
+                    <ChartSection 
+                      priceRanges={statistics.priceRanges} 
+                      savingsDistribution={statistics.savingsDistribution}
+                      storeDistribution={statistics.storeDistribution}
+                      storeNames={storeNames}
+                    />
+                    
+                    <DealsTable 
+                      deals={filteredDeals} 
+                      storeNames={storeNames}
+                    />
+                    
+                    {filteredDeals.length === 0 && (
+                      <div className="no-results">No deals found matching your criteria</div>
+                    )}
+                  </>
+                )}
+              </div>
             </>
           } />
           <Route path="/deal/:dealId" element={
@@ -284,8 +320,12 @@ function App() {
       </div>
     </Router>
   );
+
+
 }
-  
+
+export default App;
+
 //   if (error) {
 //     return <div className="error-message">Error: {error}</div>;
 //   }
@@ -320,4 +360,5 @@ function App() {
 //   );
 // }
 
-export default App
+    
+
